@@ -39,8 +39,9 @@ def _errors(d, sample_sizes, seed=0):
     relative_errors = []
     volume = true_volume(d)
     for n in sample_sizes:
-        N_ball_est = np.sum(sample_from_cube(d, n, seed=seed))
-        volume_est = N_ball_est * 2**d / n
+        is_in_ball = sample_from_cube(d, n, seed=seed)
+        N_ball_est = np.sum(is_in_ball)
+        volume_est = 2**d * N_ball_est / n
         rel_error = np.abs(volume_est - volume)/volume
         relative_errors.append(rel_error)
     asymptotic_errors = np.ones(len(sample_sizes))/np.sqrt(sample_sizes)
