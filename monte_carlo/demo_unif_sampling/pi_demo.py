@@ -35,6 +35,27 @@ def sample_from_cube(d, n, seed=0):
     return distances <= 1
 
 # Statistics functions
+def sample_stats(dimensions, sample_sizes, seed=0):
+    vol_mean_ests = np.zeros((len(dimensions), len(sample_sizes)))
+    vol_se_ests   = np.zeros((len(dimensions), len(sample_sizes)))
+    for i, d in enumerate(dimensions):
+        for j, n in enumerate(sample_sizes):
+            is_in_ball = sample_from_cube(d, n, seed=seed)
+            N_ball_est = np.sum(is_in_ball)
+            vol_mean_est = 2**d * N_ball_est / n
+            vol_var_est = 4**d * np.var(is_in_ball, ddof=1) / n
+            vol_mean_ests[i,j] = vol_mean_est
+            vol_se_ests[i,j] = np.sqrt(vol_var_est)
+    return vol_mean_ests, vol_se_ests
+
+def true_stats(dimensions, sample_sizes):
+    vol_mean = np.array([true_volume(d) for d in dimensions])
+    vol_se   = np.zeros((len(dimensions), len(sample_sizes)))
+    for i, d in enumerate(dimensions):
+        for j, n in enumerate(sample_sizes):
+            vol_se[i,j] = true_se(d, n)
+    return vol_mean, vol_se
+
 def _errors(d, sample_sizes, seed=0):
     relative_errors = []
     volume = true_volume(d)
