@@ -35,59 +35,6 @@ def sample_from_cube(d, n, seed=0):
     return distances <= 1
 
 # Statistics functions
-def sample_stats(dimensions, sample_sizes, seed=0):
-    vol_mean_ests = np.zeros((len(dimensions), len(sample_sizes)))
-    vol_se_ests   = np.zeros((len(dimensions), len(sample_sizes)))
-    for i, d in enumerate(dimensions):
-        for j, n in enumerate(sample_sizes):
-            is_in_ball = sample_from_cube(d, n, seed=seed)
-            N_ball_est = np.sum(is_in_ball)
-            vol_mean_est = 2**d * N_ball_est / n
-            vol_var_est = 4**d * np.var(is_in_ball, ddof=1) / n
-            vol_mean_ests[i,j] = vol_mean_est
-            vol_se_ests[i,j] = np.sqrt(vol_var_est)
-    return vol_mean_ests, vol_se_ests
-
-def true_stats(dimensions, sample_sizes):
-    vol_means = np.array([true_volume(d) for d in dimensions])
-    vol_ses   = np.zeros((len(dimensions), len(sample_sizes)))
-    for i, d in enumerate(dimensions):
-        for j, n in enumerate(sample_sizes):
-            vol_ses[i,j] = true_se(d, n)
-    return vol_means, vol_ses
-
-def relative_errors(vol_mean_ests, vol_means):
-    # estimates and true means are assumed to have been computed for the same
-    # sample sizes
-    vol_means = vol_means.reshape(-1, 1)
-    vol_means_rep = np.tile(vol_means, (1, vol_mean_ests.shape[1]))
-    return np.abs(vol_mean_ests - vol_means_rep)/vol_means_rep
-
-def plot_errors(dimensions, sample_sizes, obs_rel_errors, seed=0, 
-                ncols=3, width=4.0, height=4.0):
-    # dirty but effective function for now. In the future I should generalize it
-    asy_rel_errors = np.ones(len(sample_sizes))/np.sqrt(sample_sizes)
-    nrows = int(np.ceil(len(dimensions) / ncols))
-    figsize = (width*ncols, height*nrows)
-    _, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, constrained_layout=True)
-    if ax.ndim == 1:
-        ax = np.expand_dims(ax, axis=0)
-    for i, row in enumerate(ax):
-        for j, col in enumerate(row):
-            dim_ind = i*ncols + j
-            if dim_ind >= len(dimensions):
-                j -= 1
-                break
-            obs_rel_errors = obs_rel_errors[dim_ind,:]
-            col.plot(sample_sizes, obs_rel_errors, label="Observed")
-            col.plot(sample_sizes, asy_rel_errors, label="Asymptotic")
-            col.set_xlabel("Number of points sampled")
-            col.set_ylabel("Relative error")
-            col.set_title(f"{dimensions[dim_ind]}-ball volume estimates")
-            col.legend()
-    for col_ind in range(j+1, ncols): # don't plot empty axes
-        ax[nrows-1, col_ind].set_axis_off()
-
 def _errors(d, sample_sizes, seed=0):
     relative_errors = []
     volume = true_volume(d)
@@ -115,6 +62,30 @@ def _estimates(dimensions, n, seed=0):
 def to_power10(n):
     power = int(np.log10(n))
     return f"$10^{power}$"
+
+def plot_errors(dimensions, sample_sizes, ncols=3, width=4.0, height=4.0, seed=0):
+    # dirty but effective function for now. In the future I should generalize it
+    nrows = int(np.ceil(len(dimensions) / ncols))
+    figsize = (width*ncols, height*nrows)
+    _, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, constrained_layout=True)
+    if ax.ndim == 1:
+        ax = np.expand_dims(ax, axis=0)
+    for i, row in enumerate(ax):
+        for j, col in enumerate(row):
+            dim_ind = i*ncols + j
+            if dim_ind >= len(dimensions):
+                j -= 1
+                break
+            d = dimensions[dim_ind]
+            relative_errors, asymptotic_errors = _errors(d, sample_sizes, seed=seed)
+            col.plot(sample_sizes, relative_errors, label="Observed")
+            col.plot(sample_sizes, asymptotic_errors, label="Asymptotic")
+            col.set_xlabel("Number of points sampled")
+            col.set_ylabel("Relative error")
+            col.set_title(f"{d}-ball volume estimates")
+            col.legend()
+    for col_ind in range(j+1, ncols): # don't plot empty axes
+        ax[nrows-1, col_ind].set_axis_off()
 
 def plot_errorbars(dimensions, sample_sizes, true_or_est_se, title, seed=0, width=8.0, height=6.0):
     true_means = [true_volume(d) for d in dimensions]
